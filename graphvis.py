@@ -12,6 +12,7 @@ from GraphManager import GraphManager
 
 import pygame
 pygame.init()
+pygame.font.init()
 
 FPS = 30
 CLOCK = pygame.time.Clock()
@@ -22,11 +23,15 @@ windowDisplay = pygame.display.set_mode(windowDimensions)
 
 nodes = [GraphNode("1", (25, 50)),
          GraphNode("2", (1000, 400)),
-         GraphNode("3", (600, 600))]
+         GraphNode("3", (600, 600)),
+         GraphNode("on3", (400, 100)),
+         GraphNode("onon3", (777, 700))]
          
 connections = [(nodes[0], nodes[1]),
                (nodes[1], nodes[2]),
-               (nodes[2], nodes[0])]
+               (nodes[2], nodes[0]),
+               (nodes[2], nodes[3]),
+               (nodes[3], nodes[4])]
          
 graphManager = GraphManager(windowDisplay)
 

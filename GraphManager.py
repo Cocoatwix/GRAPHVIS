@@ -9,21 +9,33 @@ import pygame
 from GraphNode import GraphNode
 from GraphConnection import GraphConnection
 
+pygame.font.init()
+
 class GraphManager():
 
     NODERADIUS = 10
-    NODEREPULSION = 10
+    NODEREPULSION = 1/100 #The smaller the number, the greater the repulsion
     
     CONNECTIONWIDTH = 2
-    CONNECTIONSTRENGTH = 10
+    CONNECTIONSTRENGTH = 1/6000 #The larger the number, th greater the pull from the strings
     
     UNITPERPIXEL = 1/496 #Approximately 10cm on my screen
-    MINIMUMFORCE = 0.05
+    FRICTION = 0.1 #The lower the number, the 
+    
+    DEFFONT = pygame.font.SysFont("Times New Roman", 20)
     
     def __init__(self, surface):
         self.nodes = []
         self.connections = []
         self.surface = surface
+        
+        
+    def leaky_ReLU(self, n, gate):
+        '''Applies a leaky ReLU to a number.'''
+        if (n < gate):
+            return 0
+        else:
+            return n - gate
     
     
     def add_node(self, node):
@@ -40,7 +52,7 @@ class GraphManager():
         '''Adds a connection between two nodes. The two nodes must
            already be part of the graph.'''
         self.connections.append(GraphConnection(n1, n2, 0))
-   
+        
  
     def update_graph(self):
         '''Updates the graph's nodes, applying relevant forces to each.'''
@@ -51,42 +63,32 @@ class GraphManager():
             #Node repulsion
             for otherNode in self.nodes:
                 if otherNode != node: #Using memory addresses
-                    tempForce[0] += node.direction_to(otherNode)[0] * GraphManager.UNITPERPIXEL *   \
-                                    (node.distance_to(otherNode))**(-2) * \
-                                    GraphManager.NODEREPULSION
+                    tempForce[0] -= node.direction_to(otherNode)[0] * GraphManager.UNITPERPIXEL * \
+                                    (node.distance_to(otherNode) * GraphManager.NODEREPULSION)**(-2)
                                     
-                                    
-                    tempForce[1] += node.direction_to(otherNode)[1] * GraphManager.UNITPERPIXEL *   \
-                                    (node.distance_to(otherNode))**(-2) * \
-                                    GraphManager.NODEREPULSION
-                                    
+                    tempForce[1] -= node.direction_to(otherNode)[1] * GraphManager.UNITPERPIXEL * \
+                                    (node.distance_to(otherNode) * GraphManager.NODEREPULSION)**(-2)
+
                     
             #Connection attraction
             for conn in self.connections:
                 if conn.get_start_node() == node: #Using memory addresses
-                    tempForce[0] += node.direction_to(conn.get_end_node())[0] * GraphManager.UNITPERPIXEL * \
-                                    (node.distance_to(conn.get_end_node())*GraphManager.UNITPERPIXEL)**2 *  \
-                                    GraphManager.CONNECTIONSTRENGTH
+                    tempForce[0] += node.direction_to(conn.get_end_node())[0] * \
+                                    node.distance_to(conn.get_end_node()) * GraphManager.CONNECTIONSTRENGTH
  
-                    tempForce[1] += node.direction_to(conn.get_end_node())[1] * GraphManager.UNITPERPIXEL * \
-                                    (node.distance_to(conn.get_end_node())*GraphManager.UNITPERPIXEL)**2 *  \
-                                    GraphManager.CONNECTIONSTRENGTH
+                    tempForce[1] += node.direction_to(conn.get_end_node())[1] * \
+                                    node.distance_to(conn.get_end_node()) * GraphManager.CONNECTIONSTRENGTH
                     
                 elif conn.get_end_node() == node: #Using memory addresses
-                    tempForce[0] += node.direction_to(conn.get_start_node())[0] * GraphManager.UNITPERPIXEL * \
-                                    (node.distance_to(conn.get_start_node())*GraphManager.UNITPERPIXEL)**2 *  \
-                                    GraphManager.CONNECTIONSTRENGTH
+                    tempForce[0] += node.direction_to(conn.get_start_node())[0] * \
+                                    node.distance_to(conn.get_start_node()) * GraphManager.CONNECTIONSTRENGTH
                                     
-                    tempForce[1] += node.direction_to(conn.get_start_node())[1] * GraphManager.UNITPERPIXEL * \
-                                    (node.distance_to(conn.get_start_node())*GraphManager.UNITPERPIXEL)**2 *  \
-                                    GraphManager.CONNECTIONSTRENGTH
+                    tempForce[1] += node.direction_to(conn.get_start_node())[1] * \
+                                    node.distance_to(conn.get_start_node()) * GraphManager.CONNECTIONSTRENGTH
 
             #Update force
-            if (abs(tempForce[0]) < GraphManager.MINIMUMFORCE):
-                tempForce[0] = 0
-            if (abs(tempForce[1]) < GraphManager.MINIMUMFORCE):
-                tempForce[1] = 0
             node.set_externalForce(tempForce)
+            node.apply_friction(GraphManager.FRICTION)
             
         #Only update nodes after all forces have been calculated
         for node in self.nodes:
@@ -107,3 +109,15 @@ class GraphManager():
         
         for node in self.nodes:
             pygame.draw.circle(self.surface, "white", node.get_position(), GraphManager.NODERADIUS)
+            textSurf = pygame.font.Font.render(GraphManager.DEFFONT, node.get_label(), True, "white")
+            
+            textX = 0
+            textY = 0
+            if node.get_position()[0] > 0 and node.get_position()[0] < self.surface.get_width():
+                textX = node.get_position()[0]
+                
+            if node.get_position()[1]-30 > 0 and node.get_position()[1]-30 < self.surface.get_height():
+                textY = node.get_position()[1]-30
+                
+            self.surface.blit(textSurf, (textX, textY))
+            

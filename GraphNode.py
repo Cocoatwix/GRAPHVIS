@@ -1,10 +1,18 @@
 
 class GraphNode():
 
+    MINIMUMFORCE = 0.1
+
     def __init__(self, label, pos=(0, 0)):
         self.label = label
         self.position = [pos[0], pos[1]]
+        self.velocity = [0, 0]
         self.externalForce = [0, 0]
+        
+        
+    def get_label(self):
+        '''Returns the node's label.'''
+        return self.label
         
         
     def get_position(self):
@@ -33,9 +41,23 @@ class GraphNode():
         '''Returns a vector representing the direction to a given node from this node.'''
         return (node.get_position()[0] - self.position[0],
                 node.get_position()[1] - self.position[1])
+                
+                
+    def apply_friction(self, f):
+        '''Applies friction dampening to the node.'''
+        self.velocity[0] *= f
+        self.velocity[1] *= f
         
         
     def update_position(self):
         '''Uses the external force acting on the node to update its position.'''
-        self.position[0] += self.externalForce[0]
-        self.position[1] += self.externalForce[1]
+        self.velocity[0] += self.externalForce[0]
+        self.velocity[1] += self.externalForce[1]
+        
+        if abs(self.velocity[0]) < GraphNode.MINIMUMFORCE:
+            self.velocity[0] = 0
+        if abs(self.velocity[1]) < GraphNode.MINIMUMFORCE:
+            self.velocity[1] = 0
+        
+        self.position[0] += self.velocity[0]
+        self.position[1] += self.velocity[1]
