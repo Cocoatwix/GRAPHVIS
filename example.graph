@@ -1,0 +1,11 @@
+~n:4
+~l
+0:first
+1:second
+2:third
+3:fourth
+~c:direction
+0,1
+1,2
+2,3
+3,0

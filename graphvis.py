@@ -7,10 +7,16 @@ make the program flexible enough for any simple graph visualising needs.
 Sept 8, 2022
 '''
 
+'''
+Reference articles:
+tutorialspoint.com/python/python_command_line_arguments.htm
+'''
+
 from GraphNode import GraphNode
 from GraphManager import GraphManager
 
 from random import randrange
+from sys import argv
 
 import pygame
 pygame.init()
@@ -23,48 +29,68 @@ windowDimensions = [1280, 720]
 
 windowDisplay = pygame.display.set_mode(windowDimensions)
 
-#Randomly generate a bunch of nodes and connections to see how the 
-# GraphManager behaves
-
 nodesToMake = 20
 nodes = []
 connections = []
 
-for x in range(0, nodesToMake):
-    nodeX = randrange(0, windowDimensions[0])
-    nodeY = randrange(0, windowDimensions[1])
-    nodes.append(GraphNode(str(x), (nodeX, nodeY)))
-    
-connectionMarkers = [False for x in range(0, len(nodes))]
-    
-for x in range(0, nodesToMake):
-    node1 = randrange(0, len(nodes))
-    node2 = randrange(0, len(nodes))
-    connections.append((nodes[node1], nodes[node2]))
-    
-    if node1 != node2:
-        connectionMarkers[node1] = True
-        connectionMarkers[node2] = True
-    
-#Removing nodes that don't have connections
-for x in range(len(connectionMarkers)-1, -1, -1):
-    if not connectionMarkers[x]:
-        del nodes[x]
+#If user passes in a filename on command line
+#THIS CURRENTLY DOESN'T CHECK FOR MALFORMED DATA
+if len(argv) > 1:
+    try:
+        graphFile = open(argv[1], "r")
+        readMode = "" #Says how to interpret the lines we're reading
+        for line in graphFile:
+        
+            if line[0] == "~":
+                if line[1] == "n": #Number of nodes
+                    for n in range(0, int(line[3:])):
+                        nodeX = randrange(0, windowDimensions[0])
+                        nodeY = randrange(0, windowDimensions[1])
+                        nodes.append(GraphNode("", (nodeX, nodeY)))
+                        
+                elif line[1] == "l": #Labels
+                    readMode = "labels"
+                    
+                elif line[1] == "c": #Connections
+                    readMode = "connections"
+                    
+            elif readMode == "labels": #If we're reading in node labels
+                parsedLine = line.split(":")
+                nodes[int(parsedLine[0])].set_label(parsedLine[1][:-1]) #:-1 removes newline
+                
+            elif readMode == "connections": #If we're reading connection data
+                parsedLine = line.split(",")
+                connections.append((nodes[int(parsedLine[0])], nodes[int(parsedLine[1])]))
+                
+        graphFile.close()
+                
+    except:
+        print("Unable to open \"" + argv[1] + "\".")
+        
+   
+#Launching program without a file; randomly generate some nodes
+else:
+    for x in range(0, nodesToMake):
+        nodeX = randrange(0, windowDimensions[0])
+        nodeY = randrange(0, windowDimensions[1])
+        nodes.append(GraphNode(str(x), (nodeX, nodeY)))
+        
+    connectionMarkers = [False for x in range(0, len(nodes))]
+        
+    for x in range(0, nodesToMake):
+        node1 = randrange(0, len(nodes))
+        node2 = randrange(0, len(nodes))
+        connections.append((nodes[node1], nodes[node2]))
+        
+        if node1 != node2:
+            connectionMarkers[node1] = True
+            connectionMarkers[node2] = True
+        
+    #Removing nodes that don't have connections
+    for x in range(len(connectionMarkers)-1, -1, -1):
+        if not connectionMarkers[x]:
+            del nodes[x]
 
-
-'''
-nodes = [GraphNode("1", (25, 50)),
-         GraphNode("2", (1000, 400)),
-         GraphNode("3", (600, 600)),
-         GraphNode("on3", (400, 100)),
-         GraphNode("onon3", (777, 700))]
-         
-connections = [(nodes[0], nodes[1]),
-               (nodes[1], nodes[2]),
-               (nodes[2], nodes[0]),
-               (nodes[2], nodes[3]),
-               (nodes[3], nodes[4])]
-'''
 
 graphManager = GraphManager(windowDisplay)
 

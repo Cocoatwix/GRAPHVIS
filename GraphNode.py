@@ -15,6 +15,11 @@ class GraphNode():
         return self.label
         
         
+    def set_label(self, L):
+        '''Sets the node's label.'''
+        self.label = L
+        
+        
     def get_position(self):
         '''Return the position of the node.'''
         return self.position
