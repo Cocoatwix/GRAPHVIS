@@ -49,7 +49,7 @@ class GraphNode():
         self.velocity[1] *= f
         
         
-    def update_position(self):
+    def update_position(self, boundingLengths=None, boundingOffset=(0, 0), boundingRadius=0):
         '''Uses the external force acting on the node to update its position.'''
         self.velocity[0] += self.externalForce[0]
         self.velocity[1] += self.externalForce[1]
@@ -58,6 +58,18 @@ class GraphNode():
             self.velocity[0] = 0
         if abs(self.velocity[1]) < GraphNode.MINIMUMFORCE:
             self.velocity[1] = 0
-        
+  
         self.position[0] += self.velocity[0]
         self.position[1] += self.velocity[1]
+        
+        #Keeping nodes within some bounding box, if needed
+        if boundingLengths != None:
+            if self.position[0] - boundingRadius < boundingOffset[0]:
+                self.position[0] = boundingOffset[0] + boundingRadius
+            elif self.position[0] + boundingRadius > boundingLengths[0] + boundingOffset[0]:
+                self.position[0] = boundingLengths[0] + boundingOffset[0] - boundingRadius
+                
+            if self.position[1] - boundingRadius < boundingOffset[1]:
+                self.position[1] = boundingOffset[1] + boundingRadius
+            elif self.position[1] + boundingRadius > boundingLengths[1] + boundingOffset[1]:
+                self.position[1] = boundingLengths[1] + boundingOffset[1] - boundingRadius

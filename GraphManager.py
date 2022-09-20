@@ -22,12 +22,19 @@ class GraphManager():
     UNITPERPIXEL = 1/496 #Approximately 10cm on my screen
     FRICTION = 0.1 #The lower the number, the 
     
+    SCALETICK = 0.9
+    
     DEFFONT = pygame.font.SysFont("Times New Roman", 20)
     
     def __init__(self, surface):
         self.nodes = []
         self.connections = []
         self.surface = surface
+        
+        self.clickedNode = None #Holds the node the user is currently dragging
+        
+        self.drawScale = 1
+        self.boundingBox = False #Determines whether to keep the graph in a little bounding box
         
         
     def leaky_ReLU(self, n, gate):
@@ -53,6 +60,57 @@ class GraphManager():
            already be part of the graph.'''
         self.connections.append(GraphConnection(n1, n2, 0))
         
+        
+    def scale_position(self, pos):
+        '''Returns a properly scaled version of a given list.'''
+        scaledPos = pos.copy()
+        scaledPos[0] = scaledPos[0]*self.drawScale + self.surface.get_width()*(1 - self.drawScale)/2
+        scaledPos[1] = scaledPos[1]*self.drawScale + self.surface.get_height()*(1 - self.drawScale)/2
+        return scaledPos
+        
+        
+    def clear_clickedNode(self):
+        '''Sets clickedNode to None.'''
+        self.clickedNode = None
+        
+        
+    def get_clickedNode(self):
+        '''Returns clickedNode.'''
+        return self.clickedNode
+        
+        
+    def set_clickedNode(self, rect):
+        '''Sets the manager's node to drag around with the mouse.'''
+        
+        #Creating all these Rects on the fly is probably inefficient. 
+        # I'll change it if it becomes a nuisance
+        for node in self.nodes:
+        
+            #Scale nodes to fit current window zoom
+            scaledNodePos = self.scale_position(node.get_position())
+            
+            if pygame.Rect.colliderect(rect, pygame.Rect(scaledNodePos[0]-GraphManager.NODERADIUS*self.drawScale,
+                                              scaledNodePos[1]-GraphManager.NODERADIUS*self.drawScale,
+                                              GraphManager.NODERADIUS*2*self.drawScale,
+                                              GraphManager.NODERADIUS*2*self.drawScale)):
+                self.clickedNode = node #Copying address
+                return
+                
+        self.clickedNode = None
+        
+        
+    def move_clickedNode(self, delta):
+        '''Move the position of the clicked node by the amounts given.'''
+        if self.clickedNode != None:
+        
+            #These lines map our raw mouse coords to scaled coords,
+            # allowing the user to drag the nodes properly in the scaled space
+            self.drawScale = 1/self.drawScale
+            scaledDelta = self.scale_position(delta)
+            self.drawScale = 1/self.drawScale
+            
+            self.clickedNode.set_position(scaledDelta)
+        
  
     def update_graph(self):
         '''Updates the graph's nodes, applying relevant forces to each.'''
@@ -63,11 +121,17 @@ class GraphManager():
             #Node repulsion
             for otherNode in self.nodes:
                 if otherNode != node: #Using memory addresses
-                    tempForce[0] -= node.direction_to(otherNode)[0] * GraphManager.UNITPERPIXEL * \
-                                    (node.distance_to(otherNode) * GraphManager.NODEREPULSION)**(-2)
-                                    
-                    tempForce[1] -= node.direction_to(otherNode)[1] * GraphManager.UNITPERPIXEL * \
-                                    (node.distance_to(otherNode) * GraphManager.NODEREPULSION)**(-2)
+                    try:
+                        tempForce[0] -= node.direction_to(otherNode)[0] * GraphManager.UNITPERPIXEL * \
+                                        (node.distance_to(otherNode) * GraphManager.NODEREPULSION)**(-2)
+                    except ZeroDivisionError: #When a node gets shoved on top of another
+                        tempForce[0] -= 0
+                                 
+                    try:
+                        tempForce[1] -= node.direction_to(otherNode)[1] * GraphManager.UNITPERPIXEL * \
+                                        (node.distance_to(otherNode) * GraphManager.NODEREPULSION)**(-2)
+                    except ZeroDivisionError:
+                        tempForce[1] -= 0
 
                     
             #Connection attraction
@@ -91,8 +155,24 @@ class GraphManager():
             node.apply_friction(GraphManager.FRICTION)
             
         #Only update nodes after all forces have been calculated
+        #This also keeps nodes within the window
         for node in self.nodes:
-            node.update_position()
+            if self.boundingBox:
+                node.update_position((self.surface.get_width()*(1/self.drawScale), 
+                                      self.surface.get_height()*(1/self.drawScale)), 
+                                      (-(self.surface.get_width()*(1/self.drawScale) - self.surface.get_width())/2,
+                                      -(self.surface.get_height()*(1/self.drawScale) - self.surface.get_height())/2),
+                                      GraphManager.NODERADIUS*self.drawScale)
+            else:
+                node.update_position()
+                
+                
+    def move_graph(self, delta):
+        '''Moves the graph around by however much the mouse moved.'''
+        scaledDelta = [delta[0]*(1/self.drawScale), delta[1]*(1/self.drawScale)]
+        for node in self.nodes:
+            node.set_position((node.get_position()[0] + scaledDelta[0],
+                               node.get_position()[1] + scaledDelta[1]))
 
   
     def draw_graph(self):
@@ -102,22 +182,40 @@ class GraphManager():
         
         self.update_graph()
         
-        for connection in self.connections:
-            pygame.draw.line(self.surface, "grey", 
-                             connection.get_start_position(), connection.get_end_position(),
-                             width=GraphManager.CONNECTIONWIDTH)
+        for conn in self.connections:
+            connStartPos = self.scale_position(conn.get_start_position())
+            connEndPos = self.scale_position(conn.get_end_position())
+            
+            pygame.draw.line(self.surface, "grey", connStartPos, connEndPos, 
+                             width=max(int(GraphManager.CONNECTIONWIDTH*self.drawScale), 1))
         
         for node in self.nodes:
-            pygame.draw.circle(self.surface, "white", node.get_position(), GraphManager.NODERADIUS)
+            nodePos = self.scale_position(node.get_position())
+            
+            pygame.draw.circle(self.surface, "white", nodePos, GraphManager.NODERADIUS*self.drawScale)
             textSurf = pygame.font.Font.render(GraphManager.DEFFONT, node.get_label(), True, "white")
             
-            textX = 0
-            textY = 0
-            if node.get_position()[0] > 0 and node.get_position()[0] < self.surface.get_width():
-                textX = node.get_position()[0]
+            textLeeway = 30
+            textX = nodePos[0]
+            textY = nodePos[1] - textLeeway
+            
+            if textX < textLeeway:
+                textX = textLeeway
+            elif textX > self.surface.get_width() - textLeeway:
+                textX = self.surface.get_width() - textLeeway
                 
-            if node.get_position()[1]-30 > 0 and node.get_position()[1]-30 < self.surface.get_height():
-                textY = node.get_position()[1]-30
+            if textY < textLeeway - 10:
+                textY = textLeeway - 10
+            elif textY > self.surface.get_height() - textLeeway:
+                textY = self.surface.get_height() - textLeeway
                 
             self.surface.blit(textSurf, (textX, textY))
             
+            
+    def change_scale(self, delta):
+        '''Changes the scale at which the graph is drawn.'''
+        for x in range(0, abs(delta)):
+            if delta > 0:
+                self.drawScale /= GraphManager.SCALETICK
+            else:
+                self.drawScale *= GraphManager.SCALETICK
