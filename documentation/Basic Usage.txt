@@ -1,0 +1,10 @@
+PREREQUISITES:
+Using GRAPHVIS requires a Python install with Pygame, which can be installed using pip. This program was tested using Python 3.10 and Pygame 2.1.2, though other versions should also work.
+
+STARTING THE PROGRAM:
+Launching graphvis.py directly or through the command line without any arguments will generate a random graph. Launching graphvis.py on the command line with the filename of a .graph file will load the graph into the program (see ".graph specs.txt" for more information on how .graph files are formatted).
+
+USING THE PROGRAM:
+ - Clicking and dragging off of the graph itself will move the view around.
+ - Clicking and dragging on a graph node will drag the node around.
+ - Scrolling in and out with the mouse wheel will zoom the view in and out, respectfully.

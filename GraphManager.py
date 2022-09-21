@@ -19,6 +19,9 @@ class GraphManager():
     CONNECTIONWIDTH = 2
     CONNECTIONSTRENGTH = 1/6000 #The larger the number, th greater the pull from the strings
     
+    ARROWHEADEND = NODERADIUS + 10
+    ARROWHEADGIRTH = 7
+    
     UNITPERPIXEL = 1/496 #Approximately 10cm on my screen
     FRICTION = 0.1 #The lower the number, the 
     
@@ -34,16 +37,33 @@ class GraphManager():
         self.clickedNode = None #Holds the node the user is currently dragging
         
         self.drawScale = 1
+        self.edgeMode = "free"
+        self.labelMode = "above"
         self.boundingBox = False #Determines whether to keep the graph in a little bounding box
         
-        
-    def leaky_ReLU(self, n, gate):
-        '''Applies a leaky ReLU to a number.'''
-        if (n < gate):
-            return 0
-        else:
-            return n - gate
     
+    @staticmethod
+    def lerp(startPos, endPos, p):
+        '''Returns a point 100p% of the way between startPos and endPos.'''
+        return [(endPos[0]-startPos[0])*p + startPos[0],
+                (endPos[1]-startPos[1])*p + startPos[1]]
+                
+                
+    def set_edgeMode(self, mode):
+        '''Sets the mode used by the manager to draw graph nodes.'''
+        self.edgeMode = mode
+        
+        
+    def set_labelMode(self, mode):
+        '''Sets the mode used by the manager to draw labels 
+        (also affects how nodes are drawn).'''
+        self.labelMode = mode
+        
+        
+    def set_boundingBox(self, mode):
+        '''Sets whether the manager should use the bounding box.'''
+        self.boundingBox = mode
+
     
     def add_node(self, node):
         '''Appends a new node to the manager's list.'''
@@ -133,8 +153,8 @@ class GraphManager():
                     except ZeroDivisionError:
                         tempForce[1] -= 0
 
-                    
-            #Connection attraction
+
+            #Connection attraction (elasticity)
             for conn in self.connections:
                 if conn.get_start_node() == node: #Using memory addresses
                     tempForce[0] += node.direction_to(conn.get_end_node())[0] * \
@@ -180,34 +200,84 @@ class GraphManager():
 
         self.surface.fill("black")
         
-        self.update_graph()
-        
         for conn in self.connections:
             connStartPos = self.scale_position(conn.get_start_position())
             connEndPos = self.scale_position(conn.get_end_position())
             
+            #The length of the edge between nodes
+            lineLength = ((connEndPos[0]-connStartPos[0])**2 + (connEndPos[1]-connStartPos[1])**2)**0.5
+            
+            #Only draw lines as far into the node as needed
+            if lineLength != 0 and self.labelMode == "body":
+                connStartPosLerp = GraphManager.lerp(connStartPos, connEndPos, GraphManager.NODERADIUS*self.drawScale/lineLength)
+                connEndPosLerp = GraphManager.lerp(connStartPos, connEndPos, 1 - GraphManager.NODERADIUS*self.drawScale/lineLength)
+                connStartPos = connStartPosLerp.copy()
+                connEndPos = connEndPosLerp.copy()
+            
+            #Draw edges
             pygame.draw.line(self.surface, "grey", connStartPos, connEndPos, 
                              width=max(int(GraphManager.CONNECTIONWIDTH*self.drawScale), 1))
+                             
+            #Draw arrowhead
+            if self.edgeMode == "direction":
+                
+                if lineLength != 0:
+                
+                    if self.labelMode == "above":
+                        arrowStart = GraphManager.lerp(connStartPos, connEndPos, 1 - GraphManager.NODERADIUS*self.drawScale/lineLength)
+                    elif self.labelMode == "body":
+                        arrowStart = connEndPos.copy()
+                        
+                    arrowEnd = GraphManager.lerp(connStartPos, connEndPos, 1 - GraphManager.ARROWHEADEND*self.drawScale/lineLength)
+                else:
+                    arrowStart = None
+                    
+                try:
+                    normalSlope = (connEndPos[1] - connStartPos[1])/(connEndPos[0] - connStartPos[0])
+                    normalSlope = -1/normalSlope
+                except ZeroDivisionError:
+                    normalSlope = None
+                    
+                if arrowStart != None:
+                    if normalSlope == None:
+                        arrowPoint1 = [arrowEnd[0], arrowEnd[1] + GraphManager.ARROWHEADGIRTH*self.drawScale]
+                        arrowPoint2 = [arrowEnd[0], arrowEnd[1] - GraphManager.ARROWHEADGIRTH*self.drawScale]
+                    else:
+                        dx = ((GraphManager.ARROWHEADGIRTH*self.drawScale)**2 / (1 + normalSlope**2))**0.5
+                        arrowPoint1 = [arrowEnd[0] + dx, arrowEnd[1] + dx*normalSlope]
+                        arrowPoint2 = [arrowEnd[0] - dx, arrowEnd[1] - dx*normalSlope]
+         
+                    pygame.draw.line(self.surface, "grey", arrowStart, arrowPoint1,
+                                     width=max(int(GraphManager.CONNECTIONWIDTH*self.drawScale), 1))
+                    pygame.draw.line(self.surface, "grey", arrowStart, arrowPoint2,
+                                     width=max(int(GraphManager.CONNECTIONWIDTH*self.drawScale), 1))
+            
         
         for node in self.nodes:
             nodePos = self.scale_position(node.get_position())
             
-            pygame.draw.circle(self.surface, "white", nodePos, GraphManager.NODERADIUS*self.drawScale)
+            if self.labelMode != "body":
+                pygame.draw.circle(self.surface, "white", nodePos, GraphManager.NODERADIUS*self.drawScale)
+                
             textSurf = pygame.font.Font.render(GraphManager.DEFFONT, node.get_label(), True, "white")
             
-            textLeeway = 30
-            textX = nodePos[0]
-            textY = nodePos[1] - textLeeway
+            textLeeway = 15
+            textX = nodePos[0] - 5*len(node.get_label()) #Will probably have to change if font sizes change
+            
+            if self.labelMode == "above":
+                textY = nodePos[1] - textLeeway - (GraphManager.NODERADIUS+5)*self.drawScale
+            elif self.labelMode == "body":
+                textY = nodePos[1] - 3*self.drawScale #Need to make this better
             
             if textX < textLeeway:
                 textX = textLeeway
-            elif textX > self.surface.get_width() - textLeeway:
-                textX = self.surface.get_width() - textLeeway
+            elif textX > self.surface.get_width() - textLeeway - 20:
+                textX = self.surface.get_width() - textLeeway - 20
                 
-            if textY < textLeeway - 10:
-                textY = textLeeway - 10
-            elif textY > self.surface.get_height() - textLeeway:
-                textY = self.surface.get_height() - textLeeway
+            if textY < textLeeway:
+                textY = textLeeway
+            elif textY > self.surface.get_height() - textLeeway - 20:
+                textY = self.surface.get_height() - textLeeway - 20
                 
             self.surface.blit(textSurf, (textX, textY))
             

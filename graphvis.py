@@ -24,6 +24,7 @@ pygame.init()
 
 FPS = 30
 CLOCK = pygame.time.Clock()
+isPaused = False
 
 windowDimensions = [1280, 720]
 
@@ -32,6 +33,8 @@ windowDisplay = pygame.display.set_mode(windowDimensions)
 nodesToMake = 20
 nodes = []
 connections = []
+
+graphManager = GraphManager(windowDisplay)
 
 #If user passes in a filename on command line
 #THIS CURRENTLY DOESN'T CHECK FOR MALFORMED DATA
@@ -42,6 +45,11 @@ if len(argv) > 1:
         for line in graphFile:
         
             if line[0] == "~":
+                if line[1] == "b": #Bounding box
+                    parsedLine = line.split(":")
+                    if parsedLine[1][:-1] == "True":
+                        graphManager.set_boundingBox(True)
+                    
                 if line[1] == "n": #Number of nodes
                     for n in range(0, int(line[3:])):
                         nodeX = randrange(0, windowDimensions[0])
@@ -49,9 +57,19 @@ if len(argv) > 1:
                         nodes.append(GraphNode("", (nodeX, nodeY)))
                         
                 elif line[1] == "l": #Labels
+                    parsedLine = line.split(":")
+                    if len(parsedLine) > 1:
+                        if parsedLine[1][:-1] == "body":
+                            graphManager.set_labelMode("body")
+                            
                     readMode = "labels"
                     
                 elif line[1] == "c": #Connections
+                    parsedLine = line.split(":")
+                    if len(parsedLine) > 1:
+                        if parsedLine[1][:-1] == "direction":
+                            graphManager.set_edgeMode("direction")
+                    
                     readMode = "connections"
                     
             elif readMode == "labels": #If we're reading in node labels
@@ -92,8 +110,6 @@ else:
             del nodes[x]
 
 
-graphManager = GraphManager(windowDisplay)
-
 for node in nodes:
     graphManager.add_node(node)
 
@@ -108,8 +124,8 @@ while True:
             quit()
             
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RIGHT:
-                pass
+            if event.key == pygame.K_p:
+                isPaused = not isPaused
                 
         #If the user wants to change the scaling of the graph
         elif event.type == pygame.MOUSEWHEEL:
@@ -125,8 +141,7 @@ while True:
             pygame.mouse.get_rel() #Called so that subsequent drags will work correctly
             graphManager.set_clickedNode(pygame.Rect(mousePos[0], mousePos[1], 2, 2))
 
-            
-            
+    
     #Checking to see if the user is dragging around
     if pygame.mouse.get_pressed()[0]:
         if graphManager.get_clickedNode() != None:
@@ -136,6 +151,9 @@ while True:
             mouseRel = pygame.mouse.get_rel()
             graphManager.move_graph([mouseRel[0], mouseRel[1]])
             
+
+    if not isPaused:
+        graphManager.update_graph()
 
     graphManager.draw_graph()
     pygame.display.update()
