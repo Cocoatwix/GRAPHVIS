@@ -60,6 +60,8 @@ if len(argv) > 1:
                         if parsedLine[1][:-1] == "body":
                             graphManager.set_labelMode("body")
                             GraphManager.NODERADIUS = 20
+                        elif parsedLine[1][:-1] == "none":
+                            graphManager.set_labelMode("none")
                             
                     readMode = "labels"
                     
@@ -125,6 +127,9 @@ while True:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_p:
                 isPaused = not isPaused
+                
+            elif event.key == pygame.K_l:
+                graphManager.toggle_labels()
                 
         #If the user wants to change the scaling of the graph
         elif event.type == pygame.MOUSEWHEEL:

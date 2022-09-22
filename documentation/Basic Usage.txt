@@ -8,3 +8,5 @@ USING THE PROGRAM:
  - Clicking and dragging off of the graph itself will move the view around.
  - Clicking and dragging on a graph node will drag the node around.
  - Scrolling in and out with the mouse wheel will zoom the view in and out, respectfully.
+ - Pressing "P" on the keyboard will stop forces from acting on the graph, essentially "pausing" any updates. You can still move the view and nodes around while the graph is paused.
+ - Pressing "L" on the keyboard will toggle labels on or off.

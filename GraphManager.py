@@ -41,6 +41,7 @@ class GraphManager():
         self.drawScale = 1
         self.edgeMode = "free"
         self.labelMode = "above"
+        self.initialLabelMode = "above"
         self.labelAlignment = "center"
         self.boundingBox = False #Determines whether to keep the graph in a little bounding box
         
@@ -63,6 +64,15 @@ class GraphManager():
         '''Sets the mode used by the manager to draw labels 
         (also affects how nodes are drawn).'''
         self.labelMode = mode
+        self.initialLabelMode = mode
+        
+        
+    def toggle_labels(self):
+        '''Toggles labels on/off.'''
+        if self.labelMode == "none":
+            self.labelMode = self.initialLabelMode
+        else:
+            self.labelMode = "none"
         
         
     def set_boundingBox(self, mode):
@@ -141,6 +151,7 @@ class GraphManager():
         '''Updates the graph's nodes, applying relevant forces to each.'''
         
         #Prevents the graph from immediately shitting itself
+        #Should definitely change this to use member variables instead of static variables
         if self.easeIntoTension:
             GraphManager.CONNECTIONSTRENGTH += (GraphManager.TARGETCONNECTIONSTRENGTH - GraphManager.CONNECTIONSTRENGTH)/10
         
@@ -232,7 +243,7 @@ class GraphManager():
                 
                 if lineLength != 0:
                 
-                    if self.labelMode == "above":
+                    if self.labelMode == "above" or self.labelMode == "none":
                         arrowStart = GraphManager.lerp(connStartPos, connEndPos, 1 - GraphManager.NODERADIUS*self.drawScale/lineLength)
                     elif self.labelMode == "body":
                         arrowStart = connEndPos.copy()
@@ -266,36 +277,42 @@ class GraphManager():
             nodePos = self.scale_position(node.get_position())
             
             if self.labelMode != "body":
-                pygame.draw.circle(self.surface, "white", nodePos, GraphManager.NODERADIUS*self.drawScale)
+                #Preventing off-screen nodes from being drawn
+                if (nodePos[0]+GraphManager.NODERADIUS > 0 and nodePos[0]-GraphManager.NODERADIUS < self.surface.get_width()) and \
+                   (nodePos[1]+GraphManager.NODERADIUS > 0 and nodePos[1]-GraphManager.NODERADIUS < self.surface.get_height()):
+                    pygame.draw.circle(self.surface, "white", nodePos, GraphManager.NODERADIUS*self.drawScale)
                 
-            textSurf = pygame.font.Font.render(GraphManager.DEFFONT, node.get_label(), True, "white")
-            
-            textLeeway = 15
-            
-            #Will probably have to change if font sizes change
-            if self.labelAlignment == "center":
-                textX = nodePos[0] - 5*(1 + len(node.get_label()))
-            elif self.labelAlignment == "left":
-                textX = nodePos[0] - 10*(1 + len(node.get_label()))
-            elif self.labelAlignment == "right":
-                textX = nodePos[0]
-            
-            if self.labelMode == "above":
-                textY = nodePos[1] - textLeeway - (GraphManager.NODERADIUS + 5)*self.drawScale
-            elif self.labelMode == "body":
-                textY = nodePos[1] - 3*self.drawScale #Need to make this better
-            
-            if textX < textLeeway:
-                textX = textLeeway
-            elif textX > self.surface.get_width() - textLeeway - 20:
-                textX = self.surface.get_width() - textLeeway - 20
+            if self.labelMode != "none":
+                textSurf = pygame.font.Font.render(GraphManager.DEFFONT, node.get_label(), True, "white")
                 
-            if textY < textLeeway:
-                textY = textLeeway
-            elif textY > self.surface.get_height() - textLeeway - 20:
-                textY = self.surface.get_height() - textLeeway - 20
+                textLeeway = 15
+                textX = 0
+                textY = 0
                 
-            self.surface.blit(textSurf, (textX, textY))
+                #Will probably have to change if font sizes change
+                if self.labelAlignment == "center":
+                    textX = nodePos[0] - 5*(1 + len(node.get_label()))
+                elif self.labelAlignment == "left":
+                    textX = nodePos[0] - 10*(1 + len(node.get_label()))
+                elif self.labelAlignment == "right":
+                    textX = nodePos[0]
+                
+                if self.labelMode == "above":
+                    textY = nodePos[1] - textLeeway - (GraphManager.NODERADIUS + 5)*self.drawScale
+                elif self.labelMode == "body":
+                    textY = nodePos[1] - 3*self.drawScale #Need to make this better
+                
+                if textX < textLeeway:
+                    textX = textLeeway
+                elif textX > self.surface.get_width() - textLeeway - 20:
+                    textX = self.surface.get_width() - textLeeway - 20
+                    
+                if textY < textLeeway:
+                    textY = textLeeway
+                elif textY > self.surface.get_height() - textLeeway - 20:
+                    textY = self.surface.get_height() - textLeeway - 20
+                    
+                self.surface.blit(textSurf, (textX, textY))
             
             
     def change_scale(self, delta):

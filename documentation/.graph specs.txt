@@ -32,6 +32,7 @@ The following lines specify a few node labels for a graph (names for the nodes, 
 The "~l" says that the following lines describe node labels. GRAPHVIS knows to stop recording labels when another descriptor appears in the file, or the file ends. The key after the colon represents the type of labels to use.
  - "above" sets node labels above circular nodes
  - "body" sets node labels as the nodes themselves (essentially, the node circle is invisible)
+ - "none" flat-out disables labels, leaving only the circular nodes and their connections.
 
 The lines following "~l" specify the labels to be used. The number before the colon specifies the number of the node to add the label to. After the colon specifies the label itself. In general, these lines will look like:
 
