@@ -1,2 +1,4 @@
 # Ignore all cached Python files
 __pycache__/*
+
+graphs/*

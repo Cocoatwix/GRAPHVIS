@@ -14,10 +14,11 @@ pygame.font.init()
 class GraphManager():
 
     NODERADIUS = 10
-    NODEREPULSION = 1/100 #The smaller the number, the greater the repulsion
+    NODEREPULSION = 1/100 #The smaller the number, the greater the repulsion (1/100)
     
     CONNECTIONWIDTH = 2
-    CONNECTIONSTRENGTH = 1/6000 #The larger the number, th greater the pull from the strings
+    CONNECTIONSTRENGTH = 1/60000 #The larger the number, the greater the pull from the strings (1/6000)
+    TARGETCONNECTIONSTRENGTH = 1/6000
     
     ARROWHEADEND = NODERADIUS + 10
     ARROWHEADGIRTH = 7
@@ -27,7 +28,8 @@ class GraphManager():
     
     SCALETICK = 0.9
     
-    DEFFONT = pygame.font.SysFont("Times New Roman", 20)
+    DEFFONT = pygame.font.SysFont("Courier", 20)
+    DEFFONT.set_bold(True)
     
     def __init__(self, surface):
         self.nodes = []
@@ -39,7 +41,10 @@ class GraphManager():
         self.drawScale = 1
         self.edgeMode = "free"
         self.labelMode = "above"
+        self.labelAlignment = "center"
         self.boundingBox = False #Determines whether to keep the graph in a little bounding box
+        
+        self.easeIntoTension = True
         
     
     @staticmethod
@@ -134,6 +139,10 @@ class GraphManager():
  
     def update_graph(self):
         '''Updates the graph's nodes, applying relevant forces to each.'''
+        
+        #Prevents the graph from immediately shitting itself
+        if self.easeIntoTension:
+            GraphManager.CONNECTIONSTRENGTH += (GraphManager.TARGETCONNECTIONSTRENGTH - GraphManager.CONNECTIONSTRENGTH)/10
         
         for node in self.nodes:
             tempForce = [0, 0]
@@ -262,10 +271,17 @@ class GraphManager():
             textSurf = pygame.font.Font.render(GraphManager.DEFFONT, node.get_label(), True, "white")
             
             textLeeway = 15
-            textX = nodePos[0] - 5*len(node.get_label()) #Will probably have to change if font sizes change
+            
+            #Will probably have to change if font sizes change
+            if self.labelAlignment == "center":
+                textX = nodePos[0] - 5*(1 + len(node.get_label()))
+            elif self.labelAlignment == "left":
+                textX = nodePos[0] - 10*(1 + len(node.get_label()))
+            elif self.labelAlignment == "right":
+                textX = nodePos[0]
             
             if self.labelMode == "above":
-                textY = nodePos[1] - textLeeway - (GraphManager.NODERADIUS+5)*self.drawScale
+                textY = nodePos[1] - textLeeway - (GraphManager.NODERADIUS + 5)*self.drawScale
             elif self.labelMode == "body":
                 textY = nodePos[1] - 3*self.drawScale #Need to make this better
             

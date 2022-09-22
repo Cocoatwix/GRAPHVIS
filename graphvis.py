@@ -52,15 +52,14 @@ if len(argv) > 1:
                     
                 if line[1] == "n": #Number of nodes
                     for n in range(0, int(line[3:])):
-                        nodeX = randrange(0, windowDimensions[0])
-                        nodeY = randrange(0, windowDimensions[1])
-                        nodes.append(GraphNode("", (nodeX, nodeY)))
+                        nodes.append(GraphNode("", (randrange(0, windowDimensions[0]), randrange(0, windowDimensions[1]))))
                         
                 elif line[1] == "l": #Labels
                     parsedLine = line.split(":")
                     if len(parsedLine) > 1:
                         if parsedLine[1][:-1] == "body":
                             graphManager.set_labelMode("body")
+                            GraphManager.NODERADIUS = 20
                             
                     readMode = "labels"
                     

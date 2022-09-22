@@ -24,14 +24,16 @@ Of course, the number 5 will change to match the correct number of nodes in the 
 LABELS (~l):
 The following lines specify a few node labels for a graph (names for the nodes, essentially):
 
-~l
+~l:above
 0:a
 1:cool
 3:name
 
-The "~l" says that the following lines describe node labels. GRAPHVIS knows to stop recording labels when another descriptor appears in the file, or the file ends.
+The "~l" says that the following lines describe node labels. GRAPHVIS knows to stop recording labels when another descriptor appears in the file, or the file ends. The key after the colon represents the type of labels to use.
+ - "above" sets node labels above circular nodes
+ - "body" sets node labels as the nodes themselves (essentially, the node circle is invisible)
 
-The lines following "~l" specify the labels to be used. The number before the colon specifies the number of the node to add the label to. The characters after the colon specify the label itself. In general, these lines will look like:
+The lines following "~l" specify the labels to be used. The number before the colon specifies the number of the node to add the label to. After the colon specifies the label itself. In general, these lines will look like:
 
 <node number>:<label>
 
@@ -48,7 +50,7 @@ The following line specifies a few connections for a graph:
 
 The "~c" says that the following lines describe node connections. GRAPHVIS knows to stop recording connections when another descriptor appears in the file, or the file ends.
 
-The characters after "~c:" specify what type of connections to use. Currently, this value can be either "direction" or "free". "direction" says to add arrowheads to the edges, while "free" leaves the edges without arrowheads. If no characters follow "~c", then "free" is assumed.
+The key after "~c:" specifies what type of connections to use. Currently, this value can be either "direction" or "free". "direction" says to add arrowheads to the edges, while "free" leaves the edges without arrowheads. If no characters follow "~c", then "free" is assumed.
  
 The lines following "~c" specify pairs of nodes to connect together with an edge. The connections are specified by node number, like labels. For each line, the pair of nodes is separated by a comma.
 

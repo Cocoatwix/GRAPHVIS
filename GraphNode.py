@@ -1,7 +1,8 @@
 
 class GraphNode():
 
-    MINIMUMFORCE = 0.1
+    MINIMUMSPEED = 0.1
+    MAXIMUMSPEED = 1000
 
     def __init__(self, label, pos=(0, 0)):
         self.label = label
@@ -59,11 +60,15 @@ class GraphNode():
         self.velocity[0] += self.externalForce[0]
         self.velocity[1] += self.externalForce[1]
         
-        if abs(self.velocity[0]) < GraphNode.MINIMUMFORCE:
+        if abs(self.velocity[0]) < GraphNode.MINIMUMSPEED:
             self.velocity[0] = 0
-        if abs(self.velocity[1]) < GraphNode.MINIMUMFORCE:
+        elif abs(self.velocity[0]) > GraphNode.MAXIMUMSPEED:
+            self.velocity[0] = GraphNode.MAXIMUMSPEED
+        if abs(self.velocity[1]) < GraphNode.MINIMUMSPEED:
             self.velocity[1] = 0
-  
+        elif abs(self.velocity[1]) > GraphNode.MAXIMUMSPEED:
+            self.velocity[1] = GraphNode.MAXIMUMSPEED
+        
         self.position[0] += self.velocity[0]
         self.position[1] += self.velocity[1]
         
