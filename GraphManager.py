@@ -16,15 +16,16 @@ class GraphManager():
     NODERADIUS = 10
     NODEREPULSION = 1/100 #The smaller the number, the greater the repulsion (1/100)
     
+    MAXREPULSIONDISTANCE = 1500 #How far apart nodes have to be before they stop repelling
+    MINTENSIONDISTANCE = 0 #How far apart nodes have to be before edges start pulling
+    
     CONNECTIONWIDTH = 2
-    CONNECTIONSTRENGTH = 1/60000 #The larger the number, the greater the pull from the strings (1/6000)
-    TARGETCONNECTIONSTRENGTH = 1/6000
     
     ARROWHEADEND = NODERADIUS + 10
     ARROWHEADGIRTH = 7
     
     UNITPERPIXEL = 1/496 #Approximately 10cm on my screen
-    FRICTION = 0.1 #The lower the number, the 
+    FRICTION = 0.9 #The higher the number, the stronger the friction
     
     SCALETICK = 0.9
     
@@ -36,6 +37,10 @@ class GraphManager():
         self.connections = []
         self.surface = surface
         
+        #Switch this back to a static variable
+        self.currentConnectionStrength = 1/6000  #The larger the number, the greater the pull from the strings (1/60000)
+        
+        #Make this a list so multiple nodes can be selected at a time
         self.clickedNode = None #Holds the node the user is currently dragging
         
         self.drawScale = 1
@@ -86,7 +91,7 @@ class GraphManager():
      
    
     def get_nodes(self):
-        '''Returns the lost of nodes in the graph.'''
+        '''Returns the list of nodes in the graph.'''
         return self.nodes
    
    
@@ -94,6 +99,26 @@ class GraphManager():
         '''Adds a connection between two nodes. The two nodes must
            already be part of the graph.'''
         self.connections.append(GraphConnection(n1, n2, 0))
+        nIndex1 = 0
+        nIndex2 = 0
+        foundn1 = False
+        foundn2 = False
+        
+        #Find the indices of the nodes so we can give the connection ID numbers
+        for node in range(0, len(self.nodes)):
+            if self.nodes[node] == n1:
+                foundn1 = True
+                nIndex1 = node
+                
+            elif self.nodes[node] == n2:
+                foundn2 = True
+                nIndex2 = node
+                
+            if foundn1 and foundn2:
+                break
+                
+        self.connections[len(self.connections)-1].set_startID(nIndex1)
+        self.connections[len(self.connections)-1].set_endID(nIndex2)
         
         
     def scale_position(self, pos):
@@ -149,55 +174,64 @@ class GraphManager():
  
     def update_graph(self):
         '''Updates the graph's nodes, applying relevant forces to each.'''
+        tempForce = [0, 0]
+        otherTempForce = [0, 0]
         
-        #Prevents the graph from immediately shitting itself
-        #Should definitely change this to use member variables instead of static variables
-        if self.easeIntoTension:
-            GraphManager.CONNECTIONSTRENGTH += (GraphManager.TARGETCONNECTIONSTRENGTH - GraphManager.CONNECTIONSTRENGTH)/10
-        
-        for node in self.nodes:
-            tempForce = [0, 0]
+        for node1 in range(0, len(self.nodes)-1):
+            node = self.nodes[node1]
+            tempForce[0] = 0
+            tempForce[1] = 0
             
             #Node repulsion
-            for otherNode in self.nodes:
-                if otherNode != node: #Using memory addresses
-                    try:
-                        tempForce[0] -= node.direction_to(otherNode)[0] * GraphManager.UNITPERPIXEL * \
-                                        (node.distance_to(otherNode) * GraphManager.NODEREPULSION)**(-2)
-                    except ZeroDivisionError: #When a node gets shoved on top of another
-                        tempForce[0] -= 0
-                                 
-                    try:
-                        tempForce[1] -= node.direction_to(otherNode)[1] * GraphManager.UNITPERPIXEL * \
-                                        (node.distance_to(otherNode) * GraphManager.NODEREPULSION)**(-2)
-                    except ZeroDivisionError:
-                        tempForce[1] -= 0
-
-
-            #Connection attraction (elasticity)
-            for conn in self.connections:
-                if conn.get_start_node() == node: #Using memory addresses
-                    tempForce[0] += node.direction_to(conn.get_end_node())[0] * \
-                                    node.distance_to(conn.get_end_node()) * GraphManager.CONNECTIONSTRENGTH
- 
-                    tempForce[1] += node.direction_to(conn.get_end_node())[1] * \
-                                    node.distance_to(conn.get_end_node()) * GraphManager.CONNECTIONSTRENGTH
+            for node2 in range(node1+1, len(self.nodes)):
+                otherNode = self.nodes[node2]
+                distance = node.distance_to(otherNode)
+                
+                if (distance < GraphManager.MAXREPULSIONDISTANCE):
+                    direction = node.direction_to(otherNode)
+                    invSquareDist = (distance * GraphManager.NODEREPULSION)**(-2)
                     
-                elif conn.get_end_node() == node: #Using memory addresses
-                    tempForce[0] += node.direction_to(conn.get_start_node())[0] * \
-                                    node.distance_to(conn.get_start_node()) * GraphManager.CONNECTIONSTRENGTH
-                                    
-                    tempForce[1] += node.direction_to(conn.get_start_node())[1] * \
-                                    node.distance_to(conn.get_start_node()) * GraphManager.CONNECTIONSTRENGTH
+                    try:
+                        otherTempForce[0] = direction[0] * GraphManager.UNITPERPIXEL * invSquareDist
+                    except ZeroDivisionError: #When a node gets shoved on top of another
+                        otherTempForce[0] = 0
 
-            #Update force
-            node.set_externalForce(tempForce)
-            node.apply_friction(GraphManager.FRICTION)
+                    try:
+                        otherTempForce[1] = direction[1] * GraphManager.UNITPERPIXEL * invSquareDist
+                    except ZeroDivisionError:
+                        otherTempForce[1] = 0
+
+                    #To save on loop computations, add this force to the otherNode
+                    otherNode.add_externalForce(otherTempForce)
+                    tempForce[0] -= otherTempForce[0]
+                    tempForce[1] -= otherTempForce[1]
+                
+            node.add_externalForce(tempForce)
+
+
+        #Connection attraction (elasticity)
+        for conn in self.connections:
+            tempForce[0] = 0
+            tempForce[1] = 0
+            
+            sNode = conn.get_start_node()
+            eNode = conn.get_end_node()
+            distance = sNode.distance_to(eNode)
+            
+            if distance > GraphManager.MINTENSIONDISTANCE:
+                direction = sNode.direction_to(eNode)
+                
+                tempForce[0] = direction[0] * distance * self.currentConnectionStrength
+                tempForce[1] = direction[1] * distance * self.currentConnectionStrength
+
+                #Update forces
+                sNode.add_externalForce(tempForce)
+                eNode.add_externalForce([-tempForce[0], -tempForce[1]])
             
         #Only update nodes after all forces have been calculated
-        #This also keeps nodes within the window
         for node in self.nodes:
-            if self.boundingBox:
+            node.apply_friction(GraphManager.FRICTION)
+            if self.boundingBox:         #This keeps nodes within the window
                 node.update_position((self.surface.get_width()*(1/self.drawScale), 
                                       self.surface.get_height()*(1/self.drawScale)), 
                                       (-(self.surface.get_width()*(1/self.drawScale) - self.surface.get_width())/2,
@@ -205,6 +239,8 @@ class GraphManager():
                                       GraphManager.NODERADIUS*self.drawScale)
             else:
                 node.update_position()
+                
+            node.set_externalForce([0, 0])
                 
                 
     def move_graph(self, delta):
@@ -240,7 +276,6 @@ class GraphManager():
                              
             #Draw arrowhead
             if self.edgeMode == "direction":
-                
                 if lineLength != 0:
                 
                     if self.labelMode == "above" or self.labelMode == "none":
@@ -278,8 +313,10 @@ class GraphManager():
             
             if self.labelMode != "body":
                 #Preventing off-screen nodes from being drawn
-                if (nodePos[0]+GraphManager.NODERADIUS > 0 and nodePos[0]-GraphManager.NODERADIUS < self.surface.get_width()) and \
-                   (nodePos[1]+GraphManager.NODERADIUS > 0 and nodePos[1]-GraphManager.NODERADIUS < self.surface.get_height()):
+                if nodePos[0]+GraphManager.NODERADIUS*self.drawScale > 0 and \
+                   nodePos[0]-GraphManager.NODERADIUS*self.drawScale < self.surface.get_width() and \
+                   nodePos[1]+GraphManager.NODERADIUS*self.drawScale > 0 and \
+                   nodePos[1]-GraphManager.NODERADIUS*self.drawScale < self.surface.get_height():
                     pygame.draw.circle(self.surface, "white", nodePos, GraphManager.NODERADIUS*self.drawScale)
                 
             if self.labelMode != "none":
@@ -304,8 +341,8 @@ class GraphManager():
                 
                 if textX < textLeeway:
                     textX = textLeeway
-                elif textX > self.surface.get_width() - textLeeway - 20:
-                    textX = self.surface.get_width() - textLeeway - 20
+                elif textX + textLeeway*len(node.get_label()) > self.surface.get_width():
+                    textX = self.surface.get_width() - textLeeway*len(node.get_label())
                     
                 if textY < textLeeway:
                     textY = textLeeway

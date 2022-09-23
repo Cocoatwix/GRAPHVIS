@@ -6,6 +6,8 @@ class GraphConnection():
     def __init__(self, n1, n2, weight=0):
         self.start = n1
         self.end = n2
+        self.startID = 0
+        self.endID = 0
         self.weight = weight
     
     
@@ -27,3 +29,23 @@ class GraphConnection():
     def get_end_position(self):
         '''Returns the ending position of the connection.'''
         return self.end.get_position()
+
+
+    def get_startID(self):
+        '''Returns startID.'''
+        return self.startID
+
+
+    def get_endID(self):
+        '''Returns endID.'''
+        return self.endID
+
+
+    def set_startID(self, ID):
+        '''Sets start ID so that the manager can more quickly calculate connection forces.'''
+        self.startID = ID
+
+
+    def set_endID(self, ID):
+        '''Sets end ID so that the manager can more quickly calculate connection forces.'''
+        self.endID = ID

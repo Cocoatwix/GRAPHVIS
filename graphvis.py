@@ -33,6 +33,7 @@ windowDisplay = pygame.display.set_mode(windowDimensions)
 nodesToMake = 20
 nodes = []
 connections = []
+connectionIDs = [] #Holds the indices of nodes for connections
 
 graphManager = GraphManager(windowDisplay)
 
@@ -80,6 +81,7 @@ if len(argv) > 1:
             elif readMode == "connections": #If we're reading connection data
                 parsedLine = line.split(",")
                 connections.append((nodes[int(parsedLine[0])], nodes[int(parsedLine[1])]))
+                connectionIDs.append((int(parsedLine[0]), int(parsedLine[1])))
                 
         graphFile.close()
                 
@@ -99,9 +101,11 @@ else:
     for x in range(0, nodesToMake):
         node1 = randrange(0, len(nodes))
         node2 = randrange(0, len(nodes))
-        connections.append((nodes[node1], nodes[node2]))
         
         if node1 != node2:
+            connections.append((nodes[node1], nodes[node2]))
+            connectionIDs.append((node1, node2))
+
             connectionMarkers[node1] = True
             connectionMarkers[node2] = True
         
@@ -109,7 +113,7 @@ else:
     for x in range(len(connectionMarkers)-1, -1, -1):
         if not connectionMarkers[x]:
             del nodes[x]
-
+         
 
 for node in nodes:
     graphManager.add_node(node)
@@ -119,6 +123,9 @@ for connection in connections:
 
 
 while True:
+    if not isPaused:
+        graphManager.update_graph()
+        
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -154,10 +161,6 @@ while True:
         else: #If the user wants to move the view around
             mouseRel = pygame.mouse.get_rel()
             graphManager.move_graph([mouseRel[0], mouseRel[1]])
-            
-
-    if not isPaused:
-        graphManager.update_graph()
 
     graphManager.draw_graph()
     pygame.display.update()

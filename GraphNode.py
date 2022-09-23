@@ -2,7 +2,7 @@
 class GraphNode():
 
     MINIMUMSPEED = 0.1
-    MAXIMUMSPEED = 1000
+    MAXIMUMSPEED = 100
 
     def __init__(self, label, pos=(0, 0)):
         self.label = label
@@ -37,6 +37,12 @@ class GraphNode():
         self.externalForce = force.copy()
         
         
+    def add_externalForce(self, force):
+        '''Adds to the node's force.'''
+        self.externalForce[0] += force[0]
+        self.externalForce[1] += force[1]
+        
+        
     def distance_to(self, node):
         '''Returns the Euclidian distance between this node and the given node.'''
         return ((self.position[0]-node.get_position()[0])**2 +
@@ -51,8 +57,9 @@ class GraphNode():
                 
     def apply_friction(self, f):
         '''Applies friction dampening to the node.'''
-        self.velocity[0] *= f
-        self.velocity[1] *= f
+        friction = [self.velocity[0]*f, self.velocity[1]*f]
+        self.externalForce[0] -= friction[0]
+        self.externalForce[1] -= friction[1]
         
         
     def update_position(self, boundingLengths=None, boundingOffset=(0, 0), boundingRadius=0):
@@ -62,12 +69,17 @@ class GraphNode():
         
         if abs(self.velocity[0]) < GraphNode.MINIMUMSPEED:
             self.velocity[0] = 0
-        elif abs(self.velocity[0]) > GraphNode.MAXIMUMSPEED:
+        elif self.velocity[0] > GraphNode.MAXIMUMSPEED:
             self.velocity[0] = GraphNode.MAXIMUMSPEED
+        elif self.velocity[0] < -GraphNode.MAXIMUMSPEED:
+            self.velocity[0] = -GraphNode.MAXIMUMSPEED
+            
         if abs(self.velocity[1]) < GraphNode.MINIMUMSPEED:
             self.velocity[1] = 0
-        elif abs(self.velocity[1]) > GraphNode.MAXIMUMSPEED:
+        elif self.velocity[1] > GraphNode.MAXIMUMSPEED:
             self.velocity[1] = GraphNode.MAXIMUMSPEED
+        elif self.velocity[1] < -GraphNode.MAXIMUMSPEED:
+            self.velocity[1] = -GraphNode.MAXIMUMSPEED
         
         self.position[0] += self.velocity[0]
         self.position[1] += self.velocity[1]
